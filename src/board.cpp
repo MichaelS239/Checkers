@@ -1,5 +1,6 @@
 #include "board.h"
 
+#include <exception>
 #include <iostream>
 
 namespace checkers {
@@ -34,6 +35,35 @@ void Board::Print() {
         }
         std::cout << '\n';
     }
+}
+
+void Board::RegisterMove(Move move) {
+    char start_char = field_[move.start_x][move.start_y];
+    if (start_char == '.') {
+        throw std::runtime_error("Error: no figure on start position");
+    }
+    if ((start_char == 'W') != user_color_) {
+        throw std::runtime_error("Error: wrong figure on start position");
+    }
+    char end_char = field_[move.end_x][move.end_y];
+    if (end_char != '.') {
+        throw std::runtime_error("Error: end position is not empty");
+    }
+
+    std::vector<std::pair<int, int>> changes;
+    try {
+        changes = CheckMove(move);
+    } catch (std::runtime_error err) {
+        throw err;
+    }
+    for (int i = 0; i != changes.size(); ++i) {
+        field_[changes[i].first][changes[i].second] = '.';
+    }
+    field_[move.end_x][move.end_y] = user_color_ ? 'W' : 'B';
+}
+
+std::vector<std::pair<int, int>> Board::CheckMove(Move move) {
+    return {};
 }
 
 }  // namespace checkers
