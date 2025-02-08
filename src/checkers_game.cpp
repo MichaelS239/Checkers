@@ -16,6 +16,9 @@ void CheckersGame::Start() {
                 io_handler_.PrintError(err.what());
             }
         }
+    } else {
+        board_.CreateMove();
+        board_.Print();
     }
 }
 }  // namespace checkers

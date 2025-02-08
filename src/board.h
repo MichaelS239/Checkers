@@ -21,6 +21,7 @@ public:
     void Print();
     void Init(bool user_color);
     void RegisterMove(Move move);
+    void CreateMove();
 };
 
 }  // namespace checkers
