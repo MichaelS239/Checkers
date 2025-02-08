@@ -1,13 +1,13 @@
-OBJECTS = src/main.o
-SOURCES = src/main.cpp
+OBJECTS = src/main.o src/board.o src/checkers_game.o src/io_handler.o
+SOURCES = src/main.cpp src/board.cpp src/checkers_game.cpp src/io_handler.cpp
 NAME = ./checkers
 CC = g++
 DEBUG = -g -O0
 RELEASE = -O3
-debug: $(OBJECTS)
-	$(CC) $(DEBUG) $(OBJECTS) -o $(NAME)
 release: $(OBJECTS)
 	$(CC) $(RELEASE) $(OBJECTS) -o $(NAME)
+debug: $(OBJECTS)
+	$(CC) $(DEBUG) $(OBJECTS) -o $(NAME)
 .cpp.o:
 	$(CC) $(DEBUG) -c $*.cpp -o $@
 .PHONY: all clean valgrind gdb debug release
