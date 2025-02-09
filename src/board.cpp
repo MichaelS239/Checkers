@@ -67,25 +67,25 @@ void Board::RegisterMove(Move move) {
     field_[move.end_x][move.end_y] = user_color_ ? 'W' : 'B';
 }
 
-std::vector<std::pair<int, int>> Board::CheckMove(Move move) {
-    bool user_turn = (field_[move.start_x][move.start_y] == 'W');
+MovesInfo Board::GetPossibleMoves(bool user_turn, std::pair<int, int> startpoint) const {
+    auto const& [start_x, start_y] = startpoint;
 
     std::queue<std::pair<int, int>> q;
-    q.emplace(move.start_x, move.start_y);
+    q.emplace(start_x, start_y);
     std::vector<std::vector<bool>> used(8, std::vector<bool>(8));
-    used[move.start_x][move.start_y] = true;
+    used[start_x][start_y] = true;
     std::vector<std::vector<std::pair<int, int>>> path =
             std::vector<std::vector<std::pair<int, int>>>(
                     8, std::vector<std::pair<int, int>>(8, {-1, -1}));
     std::vector<std::pair<int, int>> endpoints;
     std::vector<std::pair<int, int>> moves;
-    if ((user_turn && move.start_x >= 1) || (!user_turn && move.start_x <= 6)) {
-        int new_x = user_turn ? move.start_x - 1 : move.start_x + 1;
-        if (move.start_y >= 1 && field_[new_x][move.start_y - 1] == '.') {
-            moves.emplace_back(new_x, move.start_y - 1);
+    if ((user_turn && start_x >= 1) || (!user_turn && start_x <= 6)) {
+        int new_x = user_turn ? start_x - 1 : start_x + 1;
+        if (start_y >= 1 && field_[new_x][start_y - 1] == '.') {
+            moves.emplace_back(new_x, start_y - 1);
         }
-        if (move.start_y <= 6 && field_[new_x][move.start_y + 1] == '.') {
-            moves.emplace_back(new_x, move.start_y + 1);
+        if (start_y <= 6 && field_[new_x][start_y + 1] == '.') {
+            moves.emplace_back(new_x, start_y + 1);
         }
     }
     std::vector<std::pair<int, int>> options = {{1, 1}, {1, -1}, {-1, 1}, {-1, -1}};
@@ -100,7 +100,8 @@ std::vector<std::pair<int, int>> Board::CheckMove(Move move) {
                 int eat_y = cur_y + options[i].second;
                 int new_x = cur_x + 2 * options[i].first;
                 int new_y = cur_y + 2 * options[i].second;
-                if (field_[eat_x][eat_y] != '.' && (field_[eat_x][eat_y] == 'B') == user_turn &&
+                if (field_[eat_x][eat_y] != '.' &&
+                    ((field_[eat_x][eat_y] == 'B') == user_color_) == user_turn &&
                     field_[new_x][new_y] == '.' && !used[eat_x][eat_y] && !used[new_x][new_y]) {
                     q.emplace(new_x, new_y);
                     has_moves = true;
@@ -110,21 +111,54 @@ std::vector<std::pair<int, int>> Board::CheckMove(Move move) {
                 }
             }
         }
-        if (!has_moves && (cur_x != move.start_x || cur_y != move.start_y)) {
+        if (!has_moves && (cur_x != start_x || cur_y != start_y)) {
             endpoints.emplace_back(cur_x, cur_y);
         }
     }
+
+    if (endpoints.empty()) return {std::move(moves), true, {}};
+    return {std::move(endpoints), false, std::move(path)};
+}
+
+std::vector<std::pair<int, int>> Board::CheckMove(Move move) const {
+    bool user_turn = (field_[move.start_x][move.start_y] == 'W') == user_color_;
+    bool is_simple_move = false;
+
+    if (field_[move.start_x][move.start_y] != '.' &&
+        ((field_[move.start_x][move.start_y] == 'W') == user_color_) == user_turn &&
+        field_[move.end_x][move.end_y] == '.' && std::abs(move.start_y - move.end_y) == 1) {
+        if ((user_turn && move.start_x - move.end_x == 1) ||
+            (!user_turn && move.start_x - move.end_x == -1)) {
+            is_simple_move = true;
+        }
+    }
+
     std::pair<int, int> startpoint = {move.start_x, move.start_y};
     std::pair<int, int> endpoint = {move.end_x, move.end_y};
-    if (std::find(moves.begin(), moves.end(), endpoint) != moves.end()) {
-        if (endpoints.size() != 0) {
-            throw std::runtime_error("Error: you must capture opponent's piece");
+    if (is_simple_move) {
+        std::vector<std::pair<int, int>> startpoints;
+        for (int i = 0; i != 8; ++i) {
+            for (int j = 0; j != 8; ++j) {
+                if (field_[i][j] != '.' && ((field_[i][j] == 'W') == user_color_) == user_turn) {
+                    startpoints.emplace_back(i, j);
+                }
+            }
+        }
+        for (auto const& startpoint : startpoints) {
+            auto const& [possible_moves, are_simple_moves, path] =
+                    GetPossibleMoves(user_turn, startpoint);
+            if (!are_simple_moves) {
+                throw std::runtime_error("Error: you must capture opponent's piece");
+            }
         }
         return {startpoint};
     }
-    if (std::find(endpoints.begin(), endpoints.end(), endpoint) == endpoints.end()) {
+
+    auto const& [possible_moves, are_simple_moves, path] = GetPossibleMoves(user_turn, startpoint);
+    if (std::find(possible_moves.begin(), possible_moves.end(), endpoint) == possible_moves.end()) {
         throw std::runtime_error("Error: illegal move");
     }
+
     std::vector<std::pair<int, int>> changes;
     std::pair<int, int> cur_point = endpoint;
     while (cur_point != startpoint) {
