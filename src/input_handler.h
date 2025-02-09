@@ -1,21 +1,18 @@
 #pragma once
 
-#include <iostream>
-
 #include "move.h"
 
 namespace checkers {
 
-class IOHandler {
+class InputHandler {
 private:
     bool user_color_;
 
 public:
-    IOHandler() {}
+    InputHandler() {}
 
     bool GetColor();
     Move GetMove();
-    void PrintError(std::string&& msg);
 };
 
 }  // namespace checkers

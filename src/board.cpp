@@ -1,9 +1,9 @@
 #include "board.h"
 
+#include <cstdlib>
 #include <ctime>
-#include <exception>
 #include <iostream>
-#include <random>
+#include <stdexcept>
 
 namespace checkers {
 

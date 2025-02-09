@@ -1,14 +1,14 @@
 #pragma once
 
 #include "board.h"
-#include "io_handler.h"
+#include "input_handler.h"
 
 namespace checkers {
 
 class CheckersGame {
 private:
     Board board_;
-    IOHandler io_handler_;
+    InputHandler input_handler_;
     bool user_color_;
 
 public:

@@ -1,5 +1,5 @@
-OBJECTS = src/main.o src/board.o src/checkers_game.o src/io_handler.o
-SOURCES = src/main.cpp src/board.cpp src/checkers_game.cpp src/io_handler.cpp
+OBJECTS = src/main.o src/board.o src/checkers_game.o src/input_handler.o
+SOURCES = src/main.cpp src/board.cpp src/checkers_game.cpp src/input_handler.cpp
 NAME = ./checkers
 CC = g++
 DEBUG = -g -O0
