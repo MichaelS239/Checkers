@@ -4,6 +4,7 @@
 #include <cstdlib>
 #include <ctime>
 #include <iostream>
+#include <map>
 #include <queue>
 #include <stdexcept>
 #include <utility>
@@ -74,9 +75,7 @@ MovesInfo Board::GetPossibleMoves(bool user_turn, std::pair<int, int> startpoint
     q.emplace(start_x, start_y);
     std::vector<std::vector<bool>> used(8, std::vector<bool>(8));
     used[start_x][start_y] = true;
-    std::vector<std::vector<std::pair<int, int>>> path =
-            std::vector<std::vector<std::pair<int, int>>>(
-                    8, std::vector<std::pair<int, int>>(8, {-1, -1}));
+    PathMatrix path = PathMatrix(8, std::vector<std::pair<int, int>>(8, {-1, -1}));
     std::vector<std::pair<int, int>> endpoints;
     std::vector<std::pair<int, int>> moves;
     if ((user_turn && start_x >= 1) || (!user_turn && start_x <= 6)) {
@@ -159,7 +158,15 @@ std::vector<std::pair<int, int>> Board::CheckMove(Move move) const {
         throw std::runtime_error("Error: illegal move");
     }
 
+    return CalculateChanges(move, path);
+}
+
+std::vector<std::pair<int, int>> Board::CalculateChanges(Move move, PathMatrix const& path) const {
     std::vector<std::pair<int, int>> changes;
+
+    std::pair<int, int> startpoint = {move.start_x, move.start_y};
+    std::pair<int, int> endpoint = {move.end_x, move.end_y};
+
     std::pair<int, int> cur_point = endpoint;
     while (cur_point != startpoint) {
         std::pair<int, int> prev_point = path[cur_point.first][cur_point.second];
@@ -173,37 +180,52 @@ std::vector<std::pair<int, int>> Board::CheckMove(Move move) const {
 }
 
 void Board::CreateMove() {
-    std::vector<std::pair<int, int>> start_pos;
-    std::vector<std::pair<int, int>> end_pos;
+    std::vector<std::pair<int, int>> startpoints;
+
     for (int i = 0; i != 8; ++i) {
         for (int j = 0; j != 8; ++j) {
-            if (field_[i][j] != '.' && user_color_ == (field_[i][j] == 'B')) {
-                start_pos.emplace_back(i, j);
-            } else if (field_[i][j] == '.') {
-                end_pos.emplace_back(i, j);
+            if (field_[i][j] != '.' && (field_[i][j] == 'B') == user_color_) {
+                startpoints.emplace_back(i, j);
             }
         }
     }
-    std::vector<Move> right_moves;
-    for (int i = 0; i != start_pos.size(); ++i) {
-        for (int j = 0; j != end_pos.size(); ++j) {
-            Move exp_move = {start_pos[i].first, start_pos[i].second, end_pos[j].first,
-                             end_pos[j].second};
-            try {
-                CheckMove(exp_move);
-            } catch (std::runtime_error err) {
-                continue;
+    bool are_captures = false;
+    std::vector<Move> moves;
+    std::vector<Move> simple_moves;
+    std::vector<PathMatrix> pathes;
+    std::map<std::pair<int, int>, PathMatrix> path_map;
+    for (auto const& startpoint : startpoints) {
+        auto [possible_moves, are_simple_moves, path] = GetPossibleMoves(false, startpoint);
+        if (!are_simple_moves) {
+            are_captures = true;
+            path_map[startpoint] = std::move(path);
+            for (int i = 0; i != possible_moves.size(); ++i) {
+                moves.push_back({startpoint.first, startpoint.second, possible_moves[i].first,
+                                 possible_moves[i].second});
             }
-            right_moves.push_back(exp_move);
+        } else {
+            for (int i = 0; i != possible_moves.size(); ++i) {
+                simple_moves.push_back({startpoint.first, startpoint.second,
+                                        possible_moves[i].first, possible_moves[i].second});
+            }
         }
     }
+
     std::srand(std::time(0));
-    int index = std::rand() % right_moves.size();
-    std::vector<std::pair<int, int>> changes = CheckMove(right_moves[index]);
+    if (!are_captures) {
+        int index = std::rand() % simple_moves.size();
+        field_[simple_moves[index].start_x][simple_moves[index].start_y] = '.';
+        field_[simple_moves[index].end_x][simple_moves[index].end_y] = user_color_ ? 'B' : 'W';
+        return;
+    }
+
+    int index = std::rand() % moves.size();
+    std::pair<int, int> startpoint = {moves[index].start_x, moves[index].start_y};
+    std::vector<std::pair<int, int>> changes = CalculateChanges(moves[index], path_map[startpoint]);
     for (int i = 0; i != changes.size(); ++i) {
         field_[changes[i].first][changes[i].second] = '.';
     }
-    field_[right_moves[index].end_x][right_moves[index].end_y] = user_color_ ? 'B' : 'W';
+    field_[moves[index].end_x][moves[index].end_y] = user_color_ ? 'B' : 'W';
 }
 
 }  // namespace checkers

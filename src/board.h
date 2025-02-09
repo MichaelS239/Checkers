@@ -6,10 +6,12 @@
 
 namespace checkers {
 
+using PathMatrix = std::vector<std::vector<std::pair<int, int>>>;
+
 struct MovesInfo {
     std::vector<std::pair<int, int>> possible_moves;
     bool are_simple_moves;
-    std::vector<std::vector<std::pair<int, int>>> path;
+    PathMatrix path;
 };
 
 class Board {
@@ -20,6 +22,7 @@ private:
     std::vector<std::pair<int, int>> CheckMove(Move move) const;
 
     MovesInfo GetPossibleMoves(bool user_turn, std::pair<int, int> startpoint) const;
+    std::vector<std::pair<int, int>> CalculateChanges(Move move, PathMatrix const& path) const;
 
 public:
     Board() {
