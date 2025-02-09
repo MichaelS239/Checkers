@@ -1,9 +1,12 @@
 #include "board.h"
 
+#include <algorithm>
 #include <cstdlib>
 #include <ctime>
 #include <iostream>
+#include <queue>
 #include <stdexcept>
+#include <utility>
 
 namespace checkers {
 
@@ -56,7 +59,7 @@ void Board::RegisterMove(Move move) {
     try {
         changes = CheckMove(move);
     } catch (std::runtime_error err) {
-        throw err;
+        throw;
     }
     for (int i = 0; i != changes.size(); ++i) {
         field_[changes[i].first][changes[i].second] = '.';
@@ -65,7 +68,74 @@ void Board::RegisterMove(Move move) {
 }
 
 std::vector<std::pair<int, int>> Board::CheckMove(Move move) {
-    return {{move.start_x, move.start_y}};
+    bool user_turn = (field_[move.start_x][move.start_y] == 'W');
+
+    std::queue<std::pair<int, int>> q;
+    q.emplace(move.start_x, move.start_y);
+    std::vector<std::vector<bool>> used(8, std::vector<bool>(8));
+    used[move.start_x][move.start_y] = true;
+    std::vector<std::vector<std::pair<int, int>>> path =
+            std::vector<std::vector<std::pair<int, int>>>(
+                    8, std::vector<std::pair<int, int>>(8, {-1, -1}));
+    std::vector<std::pair<int, int>> endpoints;
+    std::vector<std::pair<int, int>> moves;
+    if ((user_turn && move.start_x >= 1) || (!user_turn && move.start_x <= 6)) {
+        int new_x = user_turn ? move.start_x - 1 : move.start_x + 1;
+        if (move.start_y >= 1 && field_[new_x][move.start_y - 1] == '.') {
+            moves.emplace_back(new_x, move.start_y - 1);
+        }
+        if (move.start_y <= 6 && field_[new_x][move.start_y + 1] == '.') {
+            moves.emplace_back(new_x, move.start_y + 1);
+        }
+    }
+    std::vector<std::pair<int, int>> options = {{1, 1}, {1, -1}, {-1, 1}, {-1, -1}};
+    while (!q.empty()) {
+        auto const& [cur_x, cur_y] = q.front();
+        q.pop();
+        bool has_moves = false;
+        for (int i = 0; i != 4; ++i) {
+            if (cur_x + 2 * options[i].first >= 0 && cur_x + 2 * options[i].first <= 7 &&
+                cur_y + 2 * options[i].second >= 0 && cur_y + 2 * options[i].second <= 7) {
+                int eat_x = cur_x + options[i].first;
+                int eat_y = cur_y + options[i].second;
+                int new_x = cur_x + 2 * options[i].first;
+                int new_y = cur_y + 2 * options[i].second;
+                if (field_[eat_x][eat_y] != '.' && (field_[eat_x][eat_y] == 'B') == user_turn &&
+                    field_[new_x][new_y] == '.' && !used[eat_x][eat_y] && !used[new_x][new_y]) {
+                    q.emplace(new_x, new_y);
+                    has_moves = true;
+                    used[eat_x][eat_y] = true;
+                    used[new_x][new_y] = true;
+                    path[new_x][new_y] = {cur_x, cur_y};
+                }
+            }
+        }
+        if (!has_moves && (cur_x != move.start_x || cur_y != move.start_y)) {
+            endpoints.emplace_back(cur_x, cur_y);
+        }
+    }
+    std::pair<int, int> startpoint = {move.start_x, move.start_y};
+    std::pair<int, int> endpoint = {move.end_x, move.end_y};
+    if (std::find(moves.begin(), moves.end(), endpoint) != moves.end()) {
+        if (endpoints.size() != 0) {
+            throw std::runtime_error("Error: you must capture opponent's piece");
+        }
+        return {startpoint};
+    }
+    if (std::find(endpoints.begin(), endpoints.end(), endpoint) == endpoints.end()) {
+        throw std::runtime_error("Error: illegal move");
+    }
+    std::vector<std::pair<int, int>> changes;
+    std::pair<int, int> cur_point = endpoint;
+    while (cur_point != startpoint) {
+        std::pair<int, int> prev_point = path[cur_point.first][cur_point.second];
+        std::pair<int, int> eat_point = {(prev_point.first + cur_point.first) / 2,
+                                         (prev_point.second + cur_point.second) / 2};
+        changes.push_back(std::move(eat_point));
+        cur_point = prev_point;
+    }
+    changes.push_back(std::move(startpoint));
+    return changes;
 }
 
 void Board::CreateMove() {
